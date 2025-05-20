@@ -2,14 +2,13 @@ name: Deploy to ECS
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 env:
   AWS_REGION: ap-southeast-1
-  ECR_REPOSITORY: myapp-flask-xray-repo # <--- updated to match Terraform config
+  ECR_REPOSITORY: myapp-flask-xray-repo  # Ensure matches your Terraform/ECR repo name
   ECS_SERVICE: myapp-flask-service
   ECS_CLUSTER: myapp-flask-xray-cluster
-  ECS_TASK_DEFINITION: terraform/ecs_task_definition.json
 
 jobs:
   deploy:
@@ -17,51 +16,63 @@ jobs:
     environment: production
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Build, tag, and push image to Amazon ECR
-      id: build-image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
-        IMAGE_TAG: latest
-      run: |
-        cd src
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+      - name: Build, tag, and push Docker image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          IMAGE_TAG: latest
+        run: |
+          cd src
+          docker build --cache-from type=local,src=/tmp/.buildx-cache --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-    - name: Install Terraform
-      uses: hashicorp/setup-terraform@v2
-      with:
-        terraform_wrapper: false
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_wrapper: false
 
-    - name: Terraform Init
-      run: terraform init
-      working-directory: ./terraform
+      - name: Terraform fmt check
+        run: terraform fmt -check
+        working-directory: ./terraform
 
-    - name: Terraform Plan
-      run: terraform plan
-      working-directory: ./terraform
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
 
-    - name: Terraform Apply
-      run: terraform apply -auto-approve
-      working-directory: ./terraform
+      - name: Terraform Plan
+        run: terraform plan -var="image=${{ steps.build-image.outputs.image }}"
+        working-directory: ./terraform
 
-    - name: Verify Deployment
-      run: |
-        SERVICE_URL=$(terraform output -raw service_url)
-        curl -s $SERVICE_URL:8080 | jq .
-      working-directory: ./terraform
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -var="image=${{ steps.build-image.outputs.image }}"
+        working-directory: ./terraform
+
+      - name: Install jq for JSON parsing
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Verify Deployment with retry
+        run: |
+          SERVICE_URL=$(terraform output -raw service_url)
+          for i in {1..5}; do
+            echo "Attempt $i: Checking service at $SERVICE_URL:8080"
+            curl -s "$SERVICE_URL:8080" | jq . && break
+            echo "Waiting 10s before retry..."
+            sleep 10
+          done
+        working-directory: ./terraform
