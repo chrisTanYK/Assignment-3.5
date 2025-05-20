@@ -6,7 +6,7 @@ on:
 
 env:
   AWS_REGION: ap-southeast-1
-  ECR_REPOSITORY: myapp-flask-xray-repo
+  ECR_REPOSITORY: myapp-flask-xray-repo # <--- updated to match Terraform config
   ECS_SERVICE: myapp-flask-service
   ECS_CLUSTER: myapp-flask-xray-cluster
   ECS_TASK_DEFINITION: terraform/ecs_task_definition.json
