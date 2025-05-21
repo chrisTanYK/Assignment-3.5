@@ -1,18 +1,18 @@
-# Using latest base image from DockerHub
-FROM python:latest
+# Use specific Python version for stability
+FROM python:3.12-slim
 
-# Creating working directory inside container
+# Set working directory
 WORKDIR /app
 
-# Copy source code into working directory inside container
-COPY . /app
+# Install dependencies first (leveraging cache)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install flask inside container
-RUN pip install -r requirements.txt
+# Copy app code
+COPY . .
 
-# Expose container port
+# Expose the Flask app port
 EXPOSE 8080
 
-# Start flask app
-ENTRYPOINT ["python"]
-CMD ["app.py"]
+# Run the app
+CMD ["python", "app.py"]
