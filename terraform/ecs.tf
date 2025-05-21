@@ -79,7 +79,7 @@ resource "aws_security_group" "ecs" {
   }
 }
 
-# Data source for public subnets (to get list of public subnets, here just one)
+# Data source for public subnets (optional, can be removed if not used elsewhere)
 data "aws_subnets" "public" {
   filter {
     name   = "vpc-id"
@@ -236,8 +236,9 @@ resource "aws_ecs_service" "flask_xray" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = data.aws_subnets.public.ids
+    subnets          = [aws_subnet.public.id]    # Direct reference to subnet resource
     security_groups  = [aws_security_group.ecs.id]
     assign_public_ip = true
   }
 }
+
