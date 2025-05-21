@@ -79,7 +79,7 @@ resource "aws_security_group" "ecs" {
   }
 }
 
-# Data source for public subnets (optional, can be removed if not used elsewhere)
+# Data source for public subnets (to get list of public subnets, here just one)
 data "aws_subnets" "public" {
   filter {
     name   = "vpc-id"
@@ -121,8 +121,8 @@ resource "aws_iam_role" "ecs_task_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = {
         Service = "ecs-tasks.amazonaws.com"
       }
@@ -142,8 +142,8 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = {
         Service = "ecs-tasks.amazonaws.com"
       }
@@ -236,7 +236,7 @@ resource "aws_ecs_service" "flask_xray" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [aws_subnet.public.id]    # Direct reference to subnet resource
+    subnets          = data.aws_subnets.public.ids
     security_groups  = [aws_security_group.ecs.id]
     assign_public_ip = true
   }
