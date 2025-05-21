@@ -15,3 +15,8 @@ variable "service_name" {
   type        = string
   default     = "christanyk-flask-xray-service"
 }
+
+variable "image" {
+  description = "Docker image URI"
+  type        = string
+}
