@@ -79,7 +79,7 @@ resource "aws_security_group" "ecs" {
   }
 }
 
-# Data source for public subnets (to get list of public subnets, here just one)
+# Data source for public subnets
 data "aws_subnets" "public" {
   filter {
     name   = "vpc-id"
@@ -119,14 +119,16 @@ resource "aws_iam_role" "ecs_task_role" {
   name = "${var.prefix}-ecs-xray-taskrole"
 
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
+    Version   = "2012-10-17",
+    Statement = [
+      {
+        Action    = "sts:AssumeRole",
+        Effect    = "Allow",
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
       }
-    }]
+    ]
   })
 }
 
@@ -140,14 +142,16 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   name = "${var.prefix}-ecs-xray-taskexecutionrole"
 
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
+    Version   = "2012-10-17",
+    Statement = [
+      {
+        Action    = "sts:AssumeRole",
+        Effect    = "Allow",
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
       }
-    }]
+    ]
   })
 }
 
@@ -183,43 +187,49 @@ resource "aws_ecs_task_definition" "flask_xray" {
 
   container_definitions = jsonencode([
     {
-      name      = "flask-app"
-      image     = "${aws_ecr_repository.flask_xray.repository_url}:latest"
-      essential = true
-      portMappings = [{
-        containerPort = 8080
-        hostPort      = 8080
-        protocol      = "tcp"
-      }]
-      environment = [{
-        name  = "SERVICE_NAME"
-        value = var.service_name
-      }]
+      name      = "flask-app",
+      image     = "${aws_ecr_repository.flask_xray.repository_url}:latest",
+      essential = true,
+      portMappings = [
+        {
+          containerPort = 8080,
+          hostPort      = 8080,
+          protocol      = "tcp"
+        }
+      ],
+      environment = [
+        {
+          name  = "SERVICE_NAME",
+          value = var.service_name
+        }
+      ],
       secrets = [
         {
-          name      = "MY_APP_CONFIG"
+          name      = "MY_APP_CONFIG",
           valueFrom = aws_ssm_parameter.app_config.arn
         },
         {
-          name      = "MY_DB_PASSWORD"
+          name      = "MY_DB_PASSWORD",
           valueFrom = aws_secretsmanager_secret.db_password.arn
         }
       ]
     },
     {
-      name      = "xray-sidecar"
-      image     = "amazon/aws-xray-daemon"
-      essential = false
-      portMappings = [{
-        containerPort = 2000
-        hostPort      = 2000
-        protocol      = "udp"
-      }]
+      name      = "xray-sidecar",
+      image     = "amazon/aws-xray-daemon",
+      essential = false,
+      portMappings = [
+        {
+          containerPort = 2000,
+          hostPort      = 2000,
+          protocol      = "udp"
+        }
+      ],
       logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = "/ecs/${var.prefix}-flask-xray"
-          awslogs-region        = var.aws_region
+        logDriver = "awslogs",
+        options   = {
+          awslogs-group         = "/ecs/${var.prefix}-flask-xray",
+          awslogs-region        = var.aws_region,
           awslogs-stream-prefix = "ecs"
         }
       }
@@ -241,4 +251,5 @@ resource "aws_ecs_service" "flask_xray" {
     assign_public_ip = true
   }
 }
+
 
