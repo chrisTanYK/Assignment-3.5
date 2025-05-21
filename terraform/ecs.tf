@@ -3,7 +3,7 @@
 # variable "aws_region" { default = "us-east-1" }
 # variable "service_name" { default = "christanyk-flask-xray-service" }
 
-# Get availability zones dynamically
+# Data source for availability zones
 data "aws_availability_zones" "available" {}
 
 # VPC
@@ -58,7 +58,7 @@ resource "aws_route_table_association" "public_assoc" {
   route_table_id = aws_route_table.public.id
 }
 
-# Security Group
+# Security Group for ECS service
 resource "aws_security_group" "ecs" {
   name        = "${var.prefix}-ecs-sg"
   description = "Allow inbound access to ECS service"
@@ -114,7 +114,7 @@ resource "aws_secretsmanager_secret_version" "db_password" {
   secret_string = "MySecretPassword123!"
 }
 
-# Task Role
+# ECS Task Role
 resource "aws_iam_role" "ecs_task_role" {
   name = "${var.prefix}-ecs-xray-taskrole"
 
@@ -122,11 +122,11 @@ resource "aws_iam_role" "ecs_task_role" {
     Version   = "2012-10-17",
     Statement = [
       {
-        Action    = "sts:AssumeRole",
         Effect    = "Allow",
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
-        }
+        },
+        Action    = "sts:AssumeRole"
       }
     ]
   })
@@ -137,7 +137,7 @@ resource "aws_iam_role_policy_attachment" "xray_write" {
   policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
 }
 
-# Task Execution Role
+# ECS Task Execution Role
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "${var.prefix}-ecs-xray-taskexecutionrole"
 
@@ -145,11 +145,11 @@ resource "aws_iam_role" "ecs_task_execution_role" {
     Version   = "2012-10-17",
     Statement = [
       {
-        Action    = "sts:AssumeRole",
         Effect    = "Allow",
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
-        }
+        },
+        Action    = "sts:AssumeRole"
       }
     ]
   })
@@ -175,7 +175,7 @@ resource "aws_ecs_cluster" "flask_xray" {
   name = "${var.prefix}-flask-xray-cluster"
 }
 
-# Task Definition
+# ECS Task Definition
 resource "aws_ecs_task_definition" "flask_xray" {
   family                   = "${var.prefix}-flask-xray-taskdef"
   network_mode             = "awsvpc"
