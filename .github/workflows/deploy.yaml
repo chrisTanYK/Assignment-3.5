@@ -5,10 +5,10 @@ on:
     branches: [main]
 
 env:
-  AWS_REGION: ap-southeast-1
-  ECR_REPOSITORY: myapp-flask-xray-repo  # Ensure matches your Terraform/ECR repo name
-  ECS_SERVICE: myapp-flask-service
-  ECS_CLUSTER: myapp-flask-xray-cluster
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: christanyk-flask-xray-repo  # Ensure matches your Terraform/ECR repo name
+  ECS_SERVICE: christanyk-flask-service
+  ECS_CLUSTER: christanyk-flask-xray-cluster
 
 jobs:
   deploy:
